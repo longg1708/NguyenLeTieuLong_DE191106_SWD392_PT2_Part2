@@ -1,0 +1,127 @@
+@startuml
+skinparam linetype ortho
+skinparam monochrome true
+skinparam shadowing false
+skinparam nodesep 50
+skinparam ranksep 50
+
+' Interfaces
+interface IBookingService {
+  + checkAvailability(roomId: String, startDate: Date, endDate: Date): boolean
+  + calculateTotal(booking: Booking): double
+  + applyDiscount(total: double, discountCode: String): double
+  - logActivity(message: String): void
+}
+
+interface IBookingRepository {
+  + saveBooking(booking: Booking): void
+  + findBookingById(bookingId: String): Booking
+  + deleteBooking(bookingId: String): void
+  - queryBookingsByGuest(guestId: String): List<Booking>
+}
+
+' Controller Layer
+class BookingController <<Controller>> {
+  - service: IBookingService
+  + makeReservation(guestId: String, roomIds: List<String>, startDate: Date, endDate: Date): Booking
+  + cancelReservation(bookingId: String): void
+  - validateRequest(request: ReservationRequest): boolean
+  # bookingHistory: Map<String, Booking>
+}
+
+' Service Layer
+class BookingService <<Service>> {
+  - repository: IBookingRepository
+  + checkAvailability(roomId: String, startDate: Date, endDate: Date): boolean
+  + calculateTotal(booking: Booking): double
+  + applyDiscount(total: double, discountCode: String): double
+  - getDiscountRate(code: String): double
+  # cache: Map<String, Double>
+}
+
+' Entities
+class Hotel {
+  + id: String
+  + name: String
+  + isActive: boolean
+  + activate(): void
+  + deactivate(): void
+  - updateStatus(status: boolean): void
+  # address: String
+}
+
+class Room {
+  + id: String
+  + number: int
+  + pricePerNight: double
+  + isAvailable(startDate: Date, endDate: Date): boolean
+  + bookRoom(booking: Booking): void
+  - cleanRoom(): void
+  # status: String
+}
+
+class RoomType {
+  + type: String
+  + capacity: int
+  + basePrice: double
+  + getDescription(): String
+  + updatePrice(newPrice: double): void
+  - validateType(): boolean
+  # features: List<String>
+}
+
+class Guest {
+  + id: String
+  + name: String
+  + email: String
+  + createBooking(rooms: List<Room>, dates: DateRange): Booking
+  + viewBookings(): List<Booking>
+  - updateContactInfo(email: String): void
+  # phone: String
+}
+
+class Booking {
+  + id: String
+  + startDate: Date
+  + endDate: Date
+  + confirm(): void
+  + cancel(): void
+  - calculateDuration(): int
+  # totalAmount: double
+}
+
+class Invoice {
+  + id: String
+  + amount: double
+  + issueDate: Date
+  + generatePdf(): File
+  + sendToGuest(guest: Guest): void
+  - applyTax(): double
+  # status: String
+}
+
+class Payment {
+  + id: String
+  + amount: double
+  + method: String
+  + process(): boolean
+  + refund(): void
+  - verifyTransaction(): boolean
+  # transactionId: String
+}
+
+' Relationships
+BookingController ..> IBookingService : <<use>>
+BookingService <|.. IBookingService
+BookingService ..> IBookingRepository : <<use>>
+
+Hotel "1" *-- "*" Room : manages
+RoomType "1" -- "*" Room : categorizes
+Guest "1" -- "*" Booking : places
+Booking "1" -- "1..*" Room : includes
+
+' From questions
+Booking "1" o-- "1..*" Invoice : generates
+Booking "1" *-- "1" Payment : processes
+
+@enduml
